@@ -10,6 +10,8 @@ We have safely disarm the vulnerabilities they contain before the teams can atta
 
 We had time to exploit the `tcp/4242` service of almost every team, but we have failed to exploit the `tcp/4141` during the CTF. It is partly because we have messed up with the binary and wrongly believed there a stack cookie, not present in the initial binary.
 
+The flags leaked here are Poulpy's ones, to make sure no other team would blame that on us :)
+
 # bastion.unlock.ctf:4242
 
 Roughly 200 lines of unobfuscated C code.
