@@ -24,18 +24,26 @@ struct Bibliotheque {
     char address[16];
     char nom[8];
 };
+```
 
 Looking back at the clues:
 
 * `malloc` and `free` in a while true loop
-* two structures of the same size, `24`
-* function pointers
+* two structures of the same size, `24` bytes
+* a set of function pointers in one of the structure
 
-It is a perfect match for **use after free**.
+Just sounds like a perfect match for **use after free**.
 
-Taking a look at `free` calls, we see that while the memory is freed, the pointer itself is not set to `NULL` after freeing it. We might have dangling pointers left, we could abuse.
+Taking a look at `free` calls, we see that while the memory is freed, the pointer itself is not set to `NULL` after freeing it. We might have dangling pointers left, we could abuse to call `TheFlag` function using a pointer.
 
+The plan is to make the following calls:
 
+1. `livre = malloc(24)`. Fill livre with garbage, we don't care. 
+2. `free(livre)`. **livre is not set to NULL**.
+3. `bibli = malloc(24)`. **Got the same pointer as just before, livre == bibli**. Fill `bibli` with interesting values, such as `pwn.util.cyclic.cyclic(n=4)`.
+4. `livre->Lire();`. Based on the structure layouts, `Lire` field will be aliased with the four last bytes of bibli `address` field. **Just have to set them to `TheFlag` address to get the flag**
+
+Repeat the operation, now setting the `bibli` fields to the correct value to leak the flag, and get rich =)
 
 # bastion.unlock.ctf:4141
 
