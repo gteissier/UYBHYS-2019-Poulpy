@@ -1,4 +1,4 @@
-# UYBHYS-2019-Pouply
+# UYBHYS-2019-Poulpy
 
 A great event, many thanks to the organizers and sponsors !
 
