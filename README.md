@@ -12,6 +12,8 @@ We had time to exploit the `tcp/4242` service of almost every team, but we have 
 
 The flags leaked here are Poulpy's ones, to make sure no other team would blame that on us :)
 
+![Poulpy](poulpy.jpg)
+
 # bastion.unlock.ctf:4242
 
 Roughly 200 lines of unobfuscated C code.
